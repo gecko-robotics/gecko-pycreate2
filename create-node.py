@@ -13,7 +13,9 @@ from pygecko.multiprocessing import GeckoSimpleProcess
 
 key = "localhost"
 
+
 def core():
+    # create a geckocore for things to connect to
     print("<<< Starting Core >>>")
     bs = BeaconCoreServer(key=key, handler=Ascii, print=False)
     bs.start()
@@ -34,16 +36,19 @@ def main():
     geckopy.init_node()
     rate = geckopy.Rate(10)  # loop rate
 
-    s = geckopy.subBinderUDS(key, 'cmd', "/tmp/cmd")
+    # s = geckopy.subBinderUDS(key, 'cmd', "/tmp/cmd")
+    s = geckopy.subBinderTCP(key, 'cmd')
     if s is None:
         raise Exception("subscriber is None")
 
-    p = geckopy.pubBinderUDS(key,'create2',"/tmp/create")
+    # p = geckopy.pubBinderUDS(key,'create2',"/tmp/create")
+    p = geckopy.pubBinderTCP(key,'create2')
     if p is None:
         raise Exception("publisher is None")
 
     print("<<< Starting Loop >>>")
     try:
+        bot.drive_direct(200,200)
         while not geckopy.is_shutdown():
             sensors = bot.get_sensors()  # returns all data
             batt = 100*sensors.battery_charge / sensors.battery_capacity
