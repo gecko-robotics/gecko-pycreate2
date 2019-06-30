@@ -7,48 +7,70 @@
 ##############################################
 from  pycreate2 import Create2
 from pygecko.multiprocessing import geckopy
+from pygecko.pycore.mbeacon import BeaconCoreServer
+from pygecko.pycore.transport import Ascii
+from pygecko.multiprocessing import GeckoSimpleProcess
 
 key = "localhost"
 
+def core():
+    print("<<< Starting Core >>>")
+    bs = BeaconCoreServer(key=key, handler=Ascii, print=False)
+    bs.start()
+    bs.run()
+
 def main():
+
+    if True:
+        sp = GeckoSimpleProcess()
+        sp.start(func=core, name='geckocore', kwargs={})
+
     print("<<< Starting Roomba >>>")
-    bot = Create2()
+    port = "/dev/serial/by-id/usb-FTDI_FT231X_USB_UART_DA01NX3Z-if00-port0"
+    bot = Create2(port)
     bot.start()
-    bot.safe()
-    
+    bot.full()
+
     geckopy.init_node()
     rate = geckopy.Rate(10)  # loop rate
 
-    topic = kwargs.get('topic')
-    
-    s = geckopy.subConnectTCP(key, 'cmd')
+    s = geckopy.subBinderUDS(key, 'cmd', "/tmp/cmd")
     if s is None:
         raise Exception("subscriber is None")
-        
-    p = geckopy.pubBinderTCP(key,'create2')
+
+    p = geckopy.pubBinderUDS(key,'create2',"/tmp/create")
     if p is None:
         raise Exception("publisher is None")
-    
+
     print("<<< Starting Loop >>>")
     try:
         while not geckopy.is_shutdown():
             sensors = bot.get_sensors()  # returns all data
-            msg = sensors
-            p.publish(msg)
-            
+            batt = 100*sensors.battery_charge / sensors.battery_capacity
+            # print(">> batter: {:.1f}".format(batt))
+            bot.digit_led_ascii("{:4}".format(int(batt)))
+            # bot.digit_led_ascii("80")
+            # print(">> ir:", sensors.light_bumper)
+            # print(">> ir:", end=" ")
+            # for i in range(6):
+            #     print("{:.1f}".format(sensors[35 + i]), end=" ")
+            # print(" ")
+            # msg = sensors
+            # p.publish(msg)
+
             msg = s.recv_nb()
             if msg:
                 print(msg)
-            
+
             rate.sleep()
     except KeyboardInterrupt:
         print("bye ...")
-    
+
     bot.drive_stop()
-    time.sleep(1)
-    bot.close()
-    pirnt("<<< Exiting >>>")
-        
+    # time.sleep(1)
+    # bot.close()
+    print("<<< Exiting >>>")
+
 
 if __name__ == '__main__':
     main()
